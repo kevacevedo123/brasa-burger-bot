@@ -1,0 +1,447 @@
+{
+  "name": "Brasa Burger - Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "566fa161-ada5-4362-81f4-5bb34908fafa",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        0
+      ],
+      "id": "581988b6-13cc-451c-9fb1-53e232b04d3d",
+      "name": "Responder al cliente"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Nombre del cliente: {{ $json.message.from.first_name }}\nMensaje: {{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Eres el asistente virtual de Brasa Burger, una hamburguesería artesanal. Atiendes a los clientes por Telegram.\n\nREGLAS:\n- Antes de responder sobre horarios, precios, productos, domicilios o pagos, consulta SIEMPRE las herramientas. Nunca inventes precios, productos ni datos del local.\n- No ofrezcas productos con disponible = \"no\". Si el cliente pide uno, dile que está agotado y sugiere una alternativa parecida.\n- Usa el tono indicado en la pestaña info.\n- Si el mensaje es \"/start\", responde con el mensaje_bienvenida de la pestaña info.\n- Si el nombre del cliente no parece un nombre real (un punto, símbolos o vacío), no lo uses.\n- Respuestas cortas y claras, de máximo 5 o 6 líneas, salvo cuando muestres el menú.\n- Escribe los precios así: $18.000.\n- NO uses formato Markdown: nada de asteriscos, almohadillas ni guiones bajos. Solo texto plano y emojis.\n\nPROCESO DE PEDIDO:\n1. Ayuda al cliente a elegir sus productos y adiciones.\n2. Pregunta si es para domicilio, para llevar o para consumir en el local.\n3. Pide su nombre. Si es domicilio, pide también la dirección completa.\n4. Pregunta la forma de pago (solo las de la pestaña info).\n5. Si es domicilio, verifica que cumpla el pedido mínimo y suma el costo del domicilio.\n6. Muestra un resumen con cada producto, su precio y el TOTAL, y pregunta: \"¿Confirmas tu pedido?\".\n7. Solo cuando el cliente confirme, usa registrar_pedido y, justo después, notificar_dueno con los mismos datos. Nunca omitas la notificación.\n8. Después de registrarlo, agradece y dile el tiempo estimado de entrega.\nNo pidas todos los datos en un solo mensaje; ve paso a paso, de forma natural.\nAl registrar el pedido, si no es para domicilio, escribe \"No aplica\" en la dirección.\n\nNUEVO PEDIDO O CAMBIOS:\n- Si el cliente dice que quiere empezar de nuevo, cambiar o cancelar un pedido que todavía NO ha confirmado, descarta los productos anteriores y empieza desde cero, sin mencionarlos más.\n\nATENCIÓN HUMANA:\n- Usa escalar_a_humano cuando: el cliente tenga una queja o mala experiencia, pida hablar con una persona, quiera un pedido para un evento (más de 15 hamburguesas), quiera cambiar o cancelar un pedido ya registrado, o pregunte algo que no encuentres en las herramientas.\n- Antes de escalar, pide amablemente un número de teléfono de contacto. Si no lo quiere dar, escala igual con \"No proporcionado\".\n- Con las quejas, muestra empatía y discúlpate brevemente. No discutas ni des explicaciones largas.\n- Después de escalar, dile al cliente que un miembro del equipo lo contactará pronto.\n- Nunca prometas reembolsos, descuentos, regalos ni tiempos exactos de respuesta. Eso lo decide el equipo."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "99be8c06-318a-42f4-8676-8607ab9ef10f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-5-5",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 5.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        96,
+        208
+      ],
+      "id": "28553194-6b36-45be-b11e-d95615d47b10",
+      "name": "Anthropic Chat Model"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        208
+      ],
+      "id": "6abd6d4f-40e9-4207-a284-6584f7b65d2f",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consulta los datos generales de Brasa Burger: nombre, dirección, teléfono, horario de atención, servicios, costo del domicilio, pedido mínimo para domicilio, tiempo de entrega, formas de pago, tono de comunicación y mensaje de bienvenida. Úsala cuando el cliente pregunte por horarios, ubicación, domicilios o pagos, o cuando necesites el mensaje de bienvenida.",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "info",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        384,
+        208
+      ],
+      "id": "4b26297e-deec-411d-857a-c75fea511a35",
+      "name": "consultar_info"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consulta el menú completo de Brasa Burger: hamburguesas, combos, acompañamientos, bebidas y adiciones, con su descripción, precio en pesos colombianos y disponibilidad (si o no). Úsala siempre que el cliente pregunte por productos, precios o recomendaciones, o quiera hacer un pedido.",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "menu",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        208
+      ],
+      "id": "38eb41f9-7c53-4e77-87fb-d2cda39966ef",
+      "name": "consultar_menu"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consulta las preguntas frecuentes de Brasa Burger, como opciones vegetarianas, cobertura de domicilios, cambios en ingredientes, pedidos para eventos y parqueadero. Úsala cuando el cliente haga una pregunta que no sea de menú ni de datos generales del local.",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "faq",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        208
+      ],
+      "id": "d1cad6cd-0149-4f6f-8e8a-7df44e264fd2",
+      "name": "consultar_faq"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": " Registra un pedido confirmado en el sistema del restaurante. Úsala SOLO cuando el cliente haya confirmado explícitamente el resumen final de su pedido. Nunca la uses antes de la confirmación.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "pedidos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha": "={{ $now.setZone('America/Bogota').toFormat('yyyy-MM-dd HH:mm') }}",
+            "chat_id": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+            "cliente": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cliente', ``, 'string') }}",
+            "pedido": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('pedido', ``, 'string') }}",
+            "total": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('total', ``, 'string') }}",
+            "tipo_entrega": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tipo_entrega', ``, 'string') }}",
+            "direccion": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('direccion', ``, 'string') }}",
+            "forma_pago": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('forma_pago', ``, 'string') }}",
+            "estado": "nuevo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cliente",
+              "displayName": "cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pedido",
+              "displayName": "pedido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total",
+              "displayName": "total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo_entrega",
+              "displayName": "tipo_entrega",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direccion",
+              "displayName": "direccion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "forma_pago",
+              "displayName": "forma_pago",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        208
+      ],
+      "id": "8e5bcdaf-8d00-42cb-852a-8453a6f0be66",
+      "name": "registrar_pedido"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Envía una notificación al dueño del restaurante con los datos de un pedido nuevo. Úsala SIEMPRE inmediatamente después de registrar un pedido con registrar_pedido, con los mismos datos.",
+        "chatId": "YOUR_OWNER_CHAT_ID",
+        "text": "=🔔 NUEVO PEDIDO - Brasa Burger\n\n👤 Cliente: {{ $fromAI('cliente', 'Nombre del cliente', 'string') }}\n🍔 Pedido: {{ $fromAI('pedido', 'Productos con cantidades y adiciones', 'string') }}\n💰 Total: {{ $fromAI('total', 'Total a pagar en pesos, incluyendo domicilio', 'string') }}\n🚚 Entrega: {{ $fromAI('tipo_entrega', 'Domicilio, para llevar o en el local', 'string') }}\n📍 Dirección: {{ $fromAI('direccion', 'Dirección de entrega o No aplica', 'string') }}\n💳 Pago: {{ $fromAI('forma_pago', 'Forma de pago elegida', 'string') }}\n\n🆔 Chat del cliente: {{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        208
+      ],
+      "id": "c819f866-8fe5-4333-abfd-ace6b6a127b3",
+      "name": "notificar_dueno"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Notifica al dueño del restaurante cuando un cliente necesita atención de una persona: quejas, solicitudes de hablar con alguien, pedidos para eventos, cambios o cancelaciones de pedidos ya registrados, o preguntas que no puedes responder con las otras herramientas.",
+        "chatId": "YOUR_OWNER_CHAT_ID",
+        "text": "=🚨 ATENCIÓN HUMANA REQUERIDA - Brasa Burger\n\n👤 Cliente: {{ $fromAI('cliente', 'Nombre del cliente, o Desconocido', 'string') }}\n📋 Motivo: {{ $fromAI('motivo', 'Uno de: Queja, Pide hablar con una persona, Pedido para evento, Cambio o cancelación de pedido registrado, Pregunta sin respuesta', 'string') }}\n📝 Resumen: {{ $fromAI('resumen', 'Resumen breve de la situación y lo que pide el cliente', 'string') }}\n📞 Teléfono: {{ $fromAI('telefono', 'Teléfono de contacto del cliente, o No proporcionado', 'string') }}\n💬 Telegram: {{ $('Telegram Trigger').first().json.message.from.username ? '@' + $('Telegram Trigger').first().json.message.from.username : 'Sin usuario de Telegram' }}\n🆔 Chat: {{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegramTool",
+      "typeVersion": 1.2,
+      "position": [
+        1088,
+        208
+      ],
+      "id": "e9db34ee-bfd6-48b9-8d8c-83deb1e0d322",
+      "name": "escalar_a_humano"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Responder al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_info": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_menu": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_faq": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "registrar_pedido": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notificar_dueno": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "escalar_a_humano": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": [],
+  "pinData": {}
+}
